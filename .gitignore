@@ -1,0 +1,11 @@
+# Local environment and secrets
+.env
+.env.local
+
+# Runtime output
+*.log
+
+# Editor and OS files
+.idea/
+.vscode/
+.DS_Store
