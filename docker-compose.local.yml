@@ -1,0 +1,24 @@
+services:
+  spring:
+    image: chok-v2-spring:local
+    build:
+      context: ${SPRING_BUILD_CONTEXT:-../backend-spring}
+      dockerfile: Dockerfile
+
+  fastapi:
+    image: chok-v2-fastapi:local
+    build:
+      context: ${FASTAPI_BUILD_CONTEXT:-../api-fastapi}
+      dockerfile: Dockerfile
+
+  frontend:
+    image: chok-v2-frontend:local
+    build:
+      context: ${FRONTEND_BUILD_CONTEXT:-../frontend}
+      dockerfile: Dockerfile
+
+  sdk:
+    image: chok-v2-sdk:local
+    build:
+      context: ${SDK_BUILD_CONTEXT:-../py-sdk}
+      dockerfile: Dockerfile

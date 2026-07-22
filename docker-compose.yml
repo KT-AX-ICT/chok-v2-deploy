@@ -1,0 +1,115 @@
+name: chok-v2
+
+services:
+  mysql:
+    image: ${MYSQL_IMAGE:-mysql:8.4}
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?set MYSQL_ROOT_PASSWORD in .env}
+      SPRING_DB_NAME: ${SPRING_DB_NAME:-chokchok}
+      SPRING_DB_USER: ${SPRING_DB_USER:-chokchok}
+      SPRING_DB_PASSWORD: ${SPRING_DB_PASSWORD:?set SPRING_DB_PASSWORD in .env}
+      FASTAPI_DB_NAME: ${FASTAPI_DB_NAME:-chok_ai}
+      FASTAPI_DB_USER: ${FASTAPI_DB_USER:-chok_ai}
+      FASTAPI_DB_PASSWORD: ${FASTAPI_DB_PASSWORD:?set FASTAPI_DB_PASSWORD in .env}
+    ports:
+      - "127.0.0.1:${MYSQL_PUBLISHED_PORT:-3307}:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+      - ./mysql/init/01-create-databases.sh:/docker-entrypoint-initdb.d/01-create-databases.sh:ro
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p\"$$MYSQL_ROOT_PASSWORD\" --silent"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 20s
+    networks:
+      - chok-v2
+
+  spring:
+    # 서비스 CI가 생성하는 deploy PR이 이 digest만 갱신합니다.
+    image: ghcr.io/kt-ax-ict/chok-v2-spring-backend@sha256:0000000000000000000000000000000000000000000000000000000000000000
+    restart: unless-stopped
+    environment:
+      DB_HOST: mysql
+      DB_PORT: "3306"
+      DB_NAME: ${SPRING_DB_NAME:-chokchok}
+      DB_USER: ${SPRING_DB_USER:-chokchok}
+      DB_PASSWORD: ${SPRING_DB_PASSWORD:?set SPRING_DB_PASSWORD in .env}
+      APP_CORS_ORIGINS: ${FRONTEND_PUBLIC_ORIGIN:-http://localhost:4173}
+    ports:
+      - "${SPRING_PUBLISHED_PORT:-8080}:8080"
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - chok-v2
+
+  fastapi:
+    # 서비스 CI가 생성하는 deploy PR이 이 digest만 갱신합니다.
+    image: ghcr.io/kt-ax-ict/chok-v2-ai-backend@sha256:0000000000000000000000000000000000000000000000000000000000000000
+    restart: unless-stopped
+    environment:
+      MYSQL_HOST: mysql
+      MYSQL_PORT: "3306"
+      MYSQL_DB: ${FASTAPI_DB_NAME:-chok_ai}
+      MYSQL_USER: ${FASTAPI_DB_USER:-chok_ai}
+      MYSQL_PASSWORD: ${FASTAPI_DB_PASSWORD:?set FASTAPI_DB_PASSWORD in .env}
+      SPRING_BASE_URL: http://spring:8080
+      RCA_WORKER_CONCURRENCY: ${RCA_WORKER_CONCURRENCY:-2}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENAI_MODEL_REPORT: ${OPENAI_MODEL_REPORT:-gpt-5.5-2026-04-23}
+      OPENAI_MODEL_ANALYSIS: ${OPENAI_MODEL_ANALYSIS:-gpt-5.4-mini-2026-03-17}
+      OPENAI_MODEL_LIGHT: ${OPENAI_MODEL_LIGHT:-gpt-5.4-nano-2026-03-17}
+      OPENAI_MAX_CONCURRENCY: ${OPENAI_MAX_CONCURRENCY:-4}
+      OPENAI_MAX_RETRIES: ${OPENAI_MAX_RETRIES:-3}
+      OPENAI_MAX_INPUT_CHARS: ${OPENAI_MAX_INPUT_CHARS:-120000}
+    ports:
+      - "127.0.0.1:${FASTAPI_PUBLISHED_PORT:-8000}:8000"
+    depends_on:
+      mysql:
+        condition: service_healthy
+      spring:
+        condition: service_started
+    networks:
+      - chok-v2
+
+  frontend:
+    # 서비스 CI가 생성하는 deploy PR이 이 digest만 갱신합니다.
+    image: ghcr.io/kt-ax-ict/chok-v2-react-frontend@sha256:0000000000000000000000000000000000000000000000000000000000000000
+    restart: unless-stopped
+    environment:
+      VITE_API_BASE_URL: ${SPRING_PUBLIC_URL:-http://localhost:8080}
+      VITE_USE_MOCK: "false"
+    ports:
+      - "${FRONTEND_PUBLISHED_PORT:-4173}:80"
+    depends_on:
+      spring:
+        condition: service_started
+    networks:
+      - chok-v2
+
+  sdk:
+    # 서비스 CI가 생성하는 deploy PR이 이 digest만 갱신합니다.
+    image: ghcr.io/kt-ax-ict/chok-v2-py-sdk@sha256:0000000000000000000000000000000000000000000000000000000000000000
+    restart: unless-stopped
+    environment:
+      RCA_COLLECT_ENDPOINT: http://fastapi:8000/ingest
+      RCA_LOOP_INTERVAL_SEC: ${RCA_LOOP_INTERVAL_SEC:-30}
+      RCA_BUFFER_RETENTION_SEC: ${RCA_BUFFER_RETENTION_SEC:-210}
+      RCA_POST_TRIGGER_WAIT_SEC: ${RCA_POST_TRIGGER_WAIT_SEC:-180}
+      RCA_SOURCE_ROOT: /data/source
+    volumes:
+      - ${SDK_SOURCE_PATH:?set SDK_SOURCE_PATH in .env}:/data/source:ro
+    depends_on:
+      fastapi:
+        condition: service_started
+    networks:
+      - chok-v2
+
+volumes:
+  mysql-data:
+
+networks:
+  chok-v2:
+    driver: bridge
