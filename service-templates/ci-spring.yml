@@ -1,0 +1,38 @@
+# Spring 레포용 CI — chok-v2-spring-backend/.github/workflows/ci.yml 로 복사
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: JDK 21 설치
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: gradle
+      - name: gradlew 실행권한
+        run: chmod +x ./gradlew
+      - name: 테스트
+        run: ./gradlew test
+
+  build:
+    needs: test
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    permissions:
+      contents: read
+      packages: write
+    uses: KT-AX-ICT/chok-v2-deploy/.github/workflows/reusable-docker-build.yml@main
+    with:
+      image_name: chok-v2-spring-backend
+      service_key: spring
+    secrets:
+      DEPLOY_BOT_APP_ID: ${{ secrets.DEPLOY_BOT_APP_ID }}
+      DEPLOY_BOT_PRIVATE_KEY: ${{ secrets.DEPLOY_BOT_PRIVATE_KEY }}
