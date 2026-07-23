@@ -1,0 +1,149 @@
+# =============================================================================
+# 공통 재사용 워크플로우: 이미지 빌드 → GHCR push → 배포 레포에 digest 갱신 PR 자동 생성
+#
+# 각 서비스 레포(FastAPI·Spring·Frontend·SDK)가 uses: 로 호출합니다.
+# 배포 버전은 이동 태그(main/latest/mvp)가 아니라 GHCR digest(@sha256:...)로 고정 →
+# 이 워크플로우가 커밋 SHA로 이미지를 발행하고, 그 digest를 배포 레포 compose에 PR로 박습니다.
+#
+# [배포 레포 Access 설정]
+#   레포가 Public이면 재사용 워크플로우는 어느 레포에서나 호출 가능 → 별도 설정 불필요.
+#   (private/internal로 바꾸면 Settings → Actions → General → Access 허용 필요)
+#
+# [조직에서 1회 설정 — 자동 PR용 GitHub App]
+#   1) 조직에 GitHub App 생성. 권한: Repository → Contents(RW), Pull requests(RW)
+#   2) App을 chok-v2-deploy 레포에 설치(install)
+#   3) App private key(.pem) 발급
+#   4) 조직 시크릿에 저장(모든 서비스 레포가 공유):
+#        DEPLOY_BOT_APP_ID        = App ID(숫자)
+#        DEPLOY_BOT_PRIVATE_KEY   = .pem 파일 내용 전체
+# =============================================================================
+name: reusable-docker-build
+
+on:
+  workflow_call:
+    inputs:
+      image_name:
+        description: "GHCR 이미지 이름(owner 제외). 예: chok-v2-ai-backend"
+        required: true
+        type: string
+      service_key:
+        description: "배포 compose의 서비스명. fastapi / spring / frontend / sdk 중 하나"
+        required: true
+        type: string
+      context:
+        description: "docker build 컨텍스트 경로"
+        required: false
+        default: "."
+        type: string
+      dockerfile:
+        description: "Dockerfile 경로"
+        required: false
+        default: "./Dockerfile"
+        type: string
+      platforms:
+        description: "빌드 대상 아키텍처. EC2가 x86이면 linux/amd64(기본)."
+        required: false
+        default: "linux/amd64"
+        type: string
+    secrets:
+      DEPLOY_BOT_APP_ID:
+        description: "자동 PR용 GitHub App ID"
+        required: true
+      DEPLOY_BOT_PRIVATE_KEY:
+        description: "자동 PR용 GitHub App private key(.pem 내용)"
+        required: true
+
+jobs:
+  # ── 1) 이미지 빌드 후 GHCR에 push하고, 배포에 쓸 digest 참조를 출력 ──────────────
+  build-and-push:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write        # GHCR push
+    outputs:
+      image_ref: ${{ steps.ref.outputs.image_ref }}   # ghcr.io/.../<name>@sha256:...
+    steps:
+      - name: 소스 체크아웃
+        uses: actions/checkout@v4
+
+      - name: Buildx 준비
+        uses: docker/setup-buildx-action@v3
+
+      - name: owner 소문자화 (GHCR는 소문자만 허용)
+        id: vars
+        run: echo "owner_lc=$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_OUTPUT"
+
+      - name: GHCR 로그인
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}   # 같은 조직 패키지엔 기본 토큰으로 push 가능
+
+      - name: 빌드 & push (커밋 SHA 태그)
+        id: build
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ inputs.context }}
+          file: ${{ inputs.dockerfile }}
+          platforms: ${{ inputs.platforms }}
+          push: true
+          tags: ghcr.io/${{ steps.vars.outputs.owner_lc }}/${{ inputs.image_name }}:sha-${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: 배포용 digest 참조 생성
+        id: ref
+        run: |
+          echo "image_ref=ghcr.io/${{ steps.vars.outputs.owner_lc }}/${{ inputs.image_name }}@${{ steps.build.outputs.digest }}" >> "$GITHUB_OUTPUT"
+
+  # ── 2) 배포 레포 compose의 해당 서비스 digest를 갱신하는 PR 자동 생성 ───────────
+  propose-deploy:
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    steps:
+      - name: GitHub App 토큰 발급 (chok-v2-deploy 대상)
+        id: app-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.DEPLOY_BOT_APP_ID }}
+          private-key: ${{ secrets.DEPLOY_BOT_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+          repositories: chok-v2-deploy
+
+      - name: 배포 레포 체크아웃
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ github.repository_owner }}/chok-v2-deploy
+          token: ${{ steps.app-token.outputs.token }}
+          path: deploy
+
+      - name: compose의 해당 서비스 digest만 교체 (형식 보존)
+        working-directory: deploy
+        env:
+          IMG: ${{ inputs.image_name }}
+          NEW_REF: ${{ needs.build-and-push.outputs.image_ref }}
+        run: |
+          new_digest="${NEW_REF##*@}"   # sha256:... 부분만
+          # 해당 이미지 줄의 digest만 치환 — 다른 서비스·주석·포맷은 그대로 둠
+          sed -i -E "s|(ghcr\.io/[^/]+/${IMG}@)sha256:[0-9a-f]{64}|\1${new_digest}|" docker-compose.yml
+          echo "== 변경 결과 =="
+          grep -n "${IMG}@" docker-compose.yml
+
+      - name: digest 갱신 PR 생성/갱신
+        uses: peter-evans/create-pull-request@v7
+        with:
+          token: ${{ steps.app-token.outputs.token }}
+          path: deploy
+          base: main
+          branch: deploy/${{ inputs.service_key }}   # 서비스별 고정 브랜치 → 같은 PR 계속 갱신
+          title: "deploy(${{ inputs.service_key }}): ${{ github.repository }}@${{ github.sha }}"
+          commit-message: "deploy(${{ inputs.service_key }}): bump image to ${{ github.sha }}"
+          body: |
+            자동 생성 PR — **${{ inputs.service_key }}** 이미지 digest 갱신
+
+            - 원본 커밋: `${{ github.repository }}@${{ github.sha }}`
+            - 이미지: `${{ needs.build-and-push.outputs.image_ref }}`
+            - CI 로그: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+
+            사람이 원본 커밋·CI 결과·digest를 확인한 뒤 병합하세요.
