@@ -62,6 +62,7 @@ jobs:
       packages: write        # GHCR push
     outputs:
       image_ref: ${{ steps.ref.outputs.image_ref }}   # ghcr.io/.../<name>@sha256:...
+      image_tag: ${{ steps.ref.outputs.image_tag }}   # ghcr.io/.../<name>:sha-<commit>
     steps:
       - name: 소스 체크아웃
         uses: actions/checkout@v4
@@ -96,6 +97,7 @@ jobs:
         id: ref
         run: |
           echo "image_ref=ghcr.io/${{ steps.vars.outputs.owner_lc }}/${{ inputs.image_name }}@${{ steps.build.outputs.digest }}" >> "$GITHUB_OUTPUT"
+          echo "image_tag=ghcr.io/${{ steps.vars.outputs.owner_lc }}/${{ inputs.image_name }}:sha-${{ github.sha }}" >> "$GITHUB_OUTPUT"
 
   # ── 2) 배포 레포 compose의 해당 서비스 digest를 갱신하는 PR 자동 생성 ───────────
   propose-deploy:
@@ -143,7 +145,8 @@ jobs:
             자동 생성 PR — **${{ inputs.service_key }}** 이미지 digest 갱신
 
             - 원본 커밋: `${{ github.repository }}@${{ github.sha }}`
-            - 이미지: `${{ needs.build-and-push.outputs.image_ref }}`
+            - GHCR 태그: `${{ needs.build-and-push.outputs.image_tag }}`
+            - 이미지(digest): `${{ needs.build-and-push.outputs.image_ref }}`
             - CI 로그: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
 
             사람이 원본 커밋·CI 결과·digest를 확인한 뒤 병합하세요.
