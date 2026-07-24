@@ -81,7 +81,7 @@ services:
 
   frontend:
     # 서비스 CI가 생성하는 deploy PR이 이 digest만 갱신합니다.
-    image: ghcr.io/kt-ax-ict/chok-v2-react-frontend@sha256:0000000000000000000000000000000000000000000000000000000000000000
+    image: ghcr.io/kt-ax-ict/chok-v2-react-frontend@sha256:1867801a82f5dd4d955f3d0b3765ba10a247c030161ca7eb221cd6fbb64df723
     restart: unless-stopped
     environment:
       VITE_API_BASE_URL: ${SPRING_PUBLIC_URL:-http://localhost:8080}
