@@ -1,6 +1,7 @@
 # FastAPI 레포용 CI — chok-v2-ai-backend/.github/workflows/ci.yml 로 복사
-# ⚠️ 원격 레포에 이미 tests.yml이 있으면 테스트가 두 벌이 된다.
-#    이 파일의 test 잡을 빼고 build 잡만 두거나, tests.yml을 이 파일로 흡수해 하나로 정리.
+# ⚠️ chok-v2-ai-backend엔 이미 tests.yml + deploy-image.yml(분리형)이 있다.
+#    이 파일로 통합(test+build 한 벌)하려면 그 둘을 삭제해 CI를 레포당 한 벌로 유지할 것.
+#    (안 그러면 테스트 두 벌 + deploy PR 두 개가 같은 deploy/fastapi 브랜치로 충돌)
 name: CI
 
 on:
