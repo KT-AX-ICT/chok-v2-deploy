@@ -34,17 +34,17 @@ service repo (main push)
 
 | 서비스 | image_name | service_key | 템플릿 | Dockerfile | CI 상태 / 할 일 |
 |--------|-----------|-------------|--------|-----------|-----------------|
-| FastAPI | `chok-v2-ai-backend` | `fastapi` | `ci-fastapi.yml` | ✅ 있음 | 원격 main에 `tests.yml`+`deploy-image.yml` 병존 → **통합 `ci.yml` 한 벌로 정리 필요**(중복 제거). ruff 정리 선행 PR 진행 중 |
-| Spring | `chok-v2-spring-backend` | `spring` | `ci-spring.yml` | ⚠️ **없음** | **Dockerfile·CI 둘 다 없음 → 배포 blocker.** 추가 전까지 compose의 spring digest는 `0000…` |
-| Frontend | `chok-v2-react-frontend` | `frontend` | `ci-frontend.yml` | ✅ 있음(node→nginx) | 원격에 워크플로우 없음 → `ci-frontend.yml` 복사만 하면 됨 |
-| SDK | `chok-v2-py-sdk` | — | (없음) | 🗑 제거 대상 | **로컬 실행 결정(2026-07-24) → 배포 이미지 없음.** `ci-sdk.yml` 삭제됨. SDK Dockerfile 제거 + compose의 `sdk` 서비스 제거 예정 |
+| FastAPI | `chok-v2-ai-backend` | `fastapi` | `ci-fastapi.yml` | ✅ 있음 | `tests.yml`과 `deploy-image.yml`이 있음. 기존 분리 구성을 유지하거나 통합 템플릿으로 한 번만 실행되게 정리 |
+| Spring | `chok-v2-spring-backend` | `spring` | `ci-spring.yml` | ✅ 있음 | 이미지 workflow 없음 → 템플릿 적용 및 자동 digest PR 검증 필요 |
+| Frontend | `chok-v2-react-frontend` | `frontend` | `ci-frontend.yml` | ⚠️ 없음 | 컨테이너 포트 `5173`을 제공하는 Dockerfile과 workflow 모두 필요 |
+| SDK | — | — | 없음 | 불필요 | 외부 환경에서 직접 실행하며 중앙 Compose와 이미지 파이프라인에서 제외 |
 
 ## 레포별 Dockerfile 요건
 
 - **FastAPI** (`chok-v2-ai-backend`): uv 설치 → uvicorn 실행. 이미 있음.
-- **Spring** (`chok-v2-spring-backend`): JDK 21 빌드(`./gradlew bootJar`) → 런타임 JRE. **추가 필요.**
-- **Frontend** (`chok-v2-react-frontend`): node 빌드 → nginx 서빙 멀티스테이지. 이미 있음.
-- **SDK** (`chok-v2-py-sdk`): 배포 컨테이너로 올리지 않음(로컬 실행) → Dockerfile 불필요.
+- **Spring** (`chok-v2-spring-backend`): JDK 21 빌드(`./gradlew bootJar`) → 런타임 JRE. 이미 있음.
+- **Frontend** (`chok-v2-react-frontend`): 컨테이너 포트 `5173`에서 애플리케이션 제공. 추가 필요.
+- **SDK** (`chok-v2-py-sdk`): 외부에서 직접 실행하므로 배포 Dockerfile 불필요.
 
 `build` 잡은 레포에 Dockerfile이 있어야 통과한다. 없으면 우선 `test` 잡만 두고 `build`는 Dockerfile 추가 후 붙인다.
 
