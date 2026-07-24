@@ -28,7 +28,7 @@ services:
 
   spring:
     # 서비스 CI가 생성하는 deploy PR이 이 digest만 갱신합니다.
-    image: ghcr.io/kt-ax-ict/chok-v2-spring-backend@sha256:0000000000000000000000000000000000000000000000000000000000000000
+    image: ghcr.io/kt-ax-ict/chok-v2-spring-backend@sha256:c6572378207400f86778cdd8ada039a481212352090d81e658d0f1a5a55bb319
     restart: unless-stopped
     environment:
       DB_HOST: mysql
