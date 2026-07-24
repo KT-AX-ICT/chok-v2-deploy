@@ -1,5 +1,5 @@
 # Frontend 레포용 CI — chok-v2-react-frontend/.github/workflows/ci.yml 로 복사
-# ⚠️ build 잡은 레포에 Dockerfile(node 빌드 → nginx 서빙)이 있어야 통과.
+# ⚠️ build 잡은 레포에 컨테이너 포트 5173을 제공하는 Dockerfile이 있어야 통과.
 #    아직 없으면 build 잡을 지우고 test 잡만 유지.
 name: CI
 

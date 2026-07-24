@@ -16,9 +16,3 @@ services:
     build:
       context: ${FRONTEND_BUILD_CONTEXT:-../frontend}
       dockerfile: Dockerfile
-
-  sdk:
-    image: chok-v2-sdk:local
-    build:
-      context: ${SDK_BUILD_CONTEXT:-../py-sdk}
-      dockerfile: Dockerfile
