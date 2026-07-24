@@ -9,7 +9,6 @@
    - FastAPI → `ci-fastapi.yml`
    - Spring → `ci-spring.yml`
    - Frontend → `ci-frontend.yml`
-   - SDK → `ci-sdk.yml`
 2. `test` 잡을 레포 실제 빌드 도구에 맞게 조정(주석 참고)
 3. 커밋·머지하면 main push 시 자동으로: 이미지 빌드 → GHCR push → 배포 레포에 digest PR 생성
 
@@ -25,7 +24,5 @@
 | FastAPI | `chok-v2-ai-backend` | `fastapi` | 있음 |
 | Spring | `chok-v2-spring-backend` | `spring` | 있음 |
 | Frontend | `chok-v2-react-frontend` | `frontend` | ⚠️ 필요(node→nginx) |
-| SDK | `chok-v2-py-sdk` | `sdk` | ⚠️ 필요(python, `rca-collect` 실행) |
-
-Frontend·SDK는 Dockerfile이 레포에 있어야 `build` 잡이 통과한다. 없으면 우선 `test` 잡만 유지.
+Frontend는 Dockerfile이 레포에 있어야 `build` 잡이 통과한다. 없으면 우선 `test` 잡만 유지.
 FastAPI는 원격에 `tests.yml`이 이미 있으면 테스트 중복 정리 필요(`ci-fastapi.yml` 상단 주석 참고).
