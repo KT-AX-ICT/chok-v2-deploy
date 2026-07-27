@@ -67,6 +67,11 @@ services:
       OPENAI_MAX_RETRIES: ${OPENAI_MAX_RETRIES:-3}
       OPENAI_MAX_INPUT_CHARS: ${OPENAI_MAX_INPUT_CHARS:-120000}
       BUNDLE_STORAGE_DIR: /app/data/bundles
+      # SDK → FastAPI /ingest 인증 키. 콤마 구분으로 복수 허용(무중단 교체: old,new).
+      # 기본값 있음 — 미설정이어도 기동되며 그때는 인증이 꺼진다(단계적 전환).
+      INGEST_API_KEYS: ${INGEST_API_KEYS:-}
+      # FastAPI → Spring /api/internal/** 공유 시크릿. spring 서비스와 같은 값을 쓴다.
+      INTERNAL_SHARED_SECRET: ${INTERNAL_SHARED_SECRET:?set INTERNAL_SHARED_SECRET in .env}
     ports:
       - "${FASTAPI_PUBLISHED_PORT:-8000}:8000"
     volumes:
