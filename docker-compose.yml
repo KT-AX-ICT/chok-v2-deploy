@@ -28,7 +28,7 @@ services:
 
   spring:
     # 서비스 CI가 생성하는 deploy PR이 이 digest만 갱신합니다.
-    image: ghcr.io/kt-ax-ict/chok-v2-spring-backend@sha256:fe38f444c3175b77250563acfbb46da71aab6445f64483cd146e3eed34500290
+    image: ghcr.io/kt-ax-ict/chok-v2-spring-backend@sha256:b1b52d44785e9ccbcdd40c0d871a5b1ec5fb0c3d60c332c88935fb21594af31e
     restart: unless-stopped
     environment:
       DB_HOST: mysql
@@ -49,7 +49,7 @@ services:
 
   fastapi:
     # 서비스 CI가 생성하는 deploy PR이 이 digest만 갱신합니다.
-    image: ghcr.io/kt-ax-ict/chok-v2-ai-backend@sha256:ee18c325c4db3052af18b31896058f3f5e537ec939cf1df2a5e316f82a8d36fb
+    image: ghcr.io/kt-ax-ict/chok-v2-ai-backend@sha256:f4cd66ce09da2d3c62e50127d87c13d060f181574c306704730c952d3b43a17e
     restart: unless-stopped
     environment:
       MYSQL_HOST: mysql
