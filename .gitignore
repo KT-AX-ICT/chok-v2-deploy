@@ -1,6 +1,7 @@
 # Local environment and secrets
 .env
 .env.local
+.env.bak*
 
 # Runtime output
 *.log

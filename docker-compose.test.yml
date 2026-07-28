@@ -1,0 +1,5 @@
+services:
+  fastapi:
+    image: ghcr.io/kt-ax-ict/chok-v2-ai-backend:sha-602c99d460433e701af16f3036c0ed128bea4cb7
+    ports:
+        - "8000:8000"
