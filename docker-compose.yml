@@ -49,7 +49,7 @@ services:
 
   fastapi:
     # 서비스 CI가 생성하는 deploy PR이 이 digest만 갱신합니다.
-    image: ghcr.io/kt-ax-ict/chok-v2-ai-backend@sha256:02b01e780b51d7547d4cb98a8e64da878e16a0e6f683cc7b827635084519a289
+    image: ghcr.io/kt-ax-ict/chok-v2-ai-backend@sha256:53fb02e03b6a6c662d1f5626a27838f34ef8774bf5e26b88036cf9787b371e6c
     restart: unless-stopped
     environment:
       MYSQL_HOST: mysql
